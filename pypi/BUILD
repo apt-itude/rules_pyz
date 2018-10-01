@@ -28,7 +28,10 @@ pyz_library(
     name="wheeltool_lib",
     srcs=["wheeltool.py"],
     pythonroot=".",
-    deps=["@pypi_setuptools//:lib"],
+    deps=[
+        "@pypi_setuptools//:lib",
+        "@pypi_six//:lib",
+    ],
 )
 pyz_test(
     name="test_wheeltool",

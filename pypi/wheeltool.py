@@ -18,14 +18,16 @@
 https://github.com/bazelbuild/rules_python
 """
 
+import email.parser
 import json
 import os
 import pkg_resources
 from pkg_resources._vendor.packaging import markers
 import re
-import rfc822
 import sys
 import zipfile
+
+import six
 
 
 def recurse_split_extra(parsed_parts):
@@ -53,18 +55,18 @@ def recurse_split_extra(parsed_parts):
         extra = value.value
 
         # if the previous item is now a dangling boolean operator: trim it
-        if len(remaining) > 0 and isinstance(remaining[-1], basestring):
+        if len(remaining) > 0 and isinstance(remaining[-1], six.string_types):
           remaining = remaining[:-1]
       else:
         remaining.append(part)
-    elif isinstance(part, basestring):
+    elif isinstance(part, six.string_types):
       # must be an operator: just append it
       remaining.append(part)
     else:
       raise Exception('unhandled part: ' + repr(part))
 
   # if the first item is a dangling boolean operator: trim it
-  if len(remaining) > 0 and isinstance(remaining[0], basestring):
+  if len(remaining) > 0 and isinstance(remaining[0], six.string_types):
     remaining = remaining[1:]
   return extra, remaining
 
@@ -75,7 +77,7 @@ def recurse_str(parsed_parts):
       out += '(' + recurse_str(part) + ')'
     elif isinstance(part, tuple):
       out += ' '.join(p.serialize() for p in part)
-    elif isinstance(part, basestring):
+    elif isinstance(part, six.string_types):
       out += ' ' + part + ' '
     else:
       raise Exception('unhandled part: ' + repr(part))
@@ -186,16 +188,14 @@ class Wheel(object):
   def _parse_metadata(self, file_object):
     # the METADATA file is in PKG-INFO format, which is a sequence of RFC822 headers:
     # https://www.python.org/dev/peps/pep-0241/
-    message = rfc822.Message(file_object)
+    parser = email.parser.BytesHeaderParser() if six.PY3 else email.parser.HeaderParser()
+    message = parser.parse(file_object)
 
     # Requires-Dist format:
     # https://packaging.python.org/specifications/core-metadata/#requires-dist-multiple-use
     requires_extra = {}
     extras = set()
-    for header in message.getallmatchingheaders('Requires-Dist'):
-      header_parts = header.strip().split(':', 2)
-      specification = header_parts[1].strip()
-
+    for specification in message.get_all('Requires-Dist', []):
       package_and_version = specification
       environment_marker = ''
       extra = ''

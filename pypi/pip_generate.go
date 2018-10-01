@@ -51,8 +51,8 @@ var pyPIPlatforms = []struct {
 	pyPIPlatform string
 }{
 	// not quite right: should include version and "intel" but seems unlikely we will find PPC now
-	{"osx", "-cp27-cp27m-macosx_10_"},
-	{"linux", "-cp27-cp27mu-manylinux1_x86_64."},
+	{"osx", "macosx"},
+	{"linux", "linux"},
 }
 
 // PyPI package names that cannot run correctly inside a zip
@@ -230,8 +230,11 @@ func wheelDependencies(pythonPath string, wheelToolPath string, path string) ([]
 }
 
 func bazelPlatform(filename string) string {
+	filenameParts := strings.Split(filename, "-")
+	platformPart := filenameParts[len(filenameParts)-1]
+
 	for _, platformDefinition := range pyPIPlatforms {
-		if strings.Contains(filename, platformDefinition.pyPIPlatform) {
+		if strings.Contains(platformPart, platformDefinition.pyPIPlatform) {
 			return platformDefinition.bazelPlatform
 		}
 	}
